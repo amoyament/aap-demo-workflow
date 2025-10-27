@@ -15,11 +15,11 @@
         content: "Step 1 (Check) was successful."
         dest: /tmp/workflow_demo/status.txt
 
-    # # This task is used to test the failure path.
-    # # By default, 'force_failure' is not defined, so it will be false, and the task will be skipped.
-    # - name: (TESTING) Force a failure if 'force_failure' is true
-    #   ansible.builtin.command: /bin/false
-    #   when: force_failure | default(false) | bool
+    # This task is used to test the failure path.
+    # By default, 'force_failure' is not defined, so it will be false, and the task will be skipped.
+    - name: (TESTING) Force a failure if 'force_failure' is true
+      ansible.builtin.command: /bin/false
+      when: force_failure | default(false) | bool
 
     - name: Print success message
       ansible.builtin.debug:
