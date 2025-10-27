@@ -9,14 +9,14 @@
         path: /tmp/workflow_demo/status.txt
       register: status_file
 
-    # - name: Debug status file
-    #   ansible.builtin.debug:
-    #     var: status_file
+    - name: Debug status file
+      ansible.builtin.debug:
+        var: status_file
 
-    # - name: Fail if status file is missing
-    #   ansible.builtin.fail:
-    #     msg: "Could not find status.txt! Did step 1 run correctly?"
-    #   when: not status_file.stat.exists
+    - name: Fail if status file is missing
+      ansible.builtin.fail:
+        msg: "Could not find status.txt! Did step 1 run correctly?"
+      when: not status_file.stat.exists
 
     - name: Create the 'app' file
       ansible.builtin.copy:
