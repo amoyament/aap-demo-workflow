@@ -4,20 +4,14 @@
   gather_facts: false
 
   tasks:
-    - name: Check if the status file from step 1 exists
-      ansible.builtin.stat:
-        path: /tmp/workflow_demo/status.txt
-      register: status_file
+    - name: Fail if the step 1 artifact is missing or did not report success
+          ansible.builtin.fail:
+            msg: "Step 1 artifact was not found or did not report success!"
+          when: ansible_facts.step_1_status is not defined or ansible_facts.step_1_status != "successful"
 
-    - name: Debug status file
+    - name: Print artifact message
       ansible.builtin.debug:
-        var: status_file
-
-    - name: Fail if status file is missing
-      ansible.builtin.fail:
-        msg: "Could not find status.txt! Did step 1 run correctly?"
-      when: not status_file.stat.exists
-
+        msg: "Successfully read artifact from Step 1: {{ ansible_facts.step_1_status }}"
     - name: Create the 'app' file
       ansible.builtin.copy:
         content: "The application was 'deployed' successfully."
