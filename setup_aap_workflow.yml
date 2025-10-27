@@ -1,0 +1,146 @@
+---
+- name: Configure AAP Workflow Demo
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  # -----------------------------------------------------------------
+  # REQUIRED VARIABLES:
+  # Pass these in using 'ansible-playbook -e "var=value"'
+  # or by setting them as environment variables.
+  # -----------------------------------------------------------------
+  vars:
+    # --- Controller Access ---
+    controller_host: "{{ lookup('env', 'CONTROLLER_HOST') | default('https-://aap.example.com') }}"
+    controller_username: "{{ lookup('env', 'CONTROLLER_USERNAME') | default('admin') }}"
+    controller_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') | default('your_password') }}"
+    controller_validate_certs: false # Set to 'true' in a production environment
+
+    # --- Your Git Repository ---
+    # !!! UPDATE THIS to point to your repo !!!
+    git_repo_url: "https://github.com/amoyament/aap-demo-workflow.git"
+
+    # --- Resource Names ---
+    org_name: "Default"
+    project_name: "ACME Deploy Project"
+    inv_name: "ACME Inventory"
+    jt_name_1: "WF - 1. Check System"
+    jt_name_2: "WF - 2. Deploy App"
+    jt_name_3: "WF - 3. Rollback"
+    wf_name: "My First Workflow"
+
+  tasks:
+    - name: 1. Create the Git Project
+      ansible.controller.project:
+        name: "{{ project_name }}"
+        organization: "{{ org_name }}"
+        scm_type: git
+        scm_url: "{{ git_repo_url }}"
+        scm_update_on_launch: true
+        wait: true # Wait for the initial sync to complete
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: acme_deploy_project
+
+    - name: 2. Create the ACME Inventory
+      ansible.controller.inventory:
+        name: "{{ inv_name }}"
+        organization: "{{ org_name }}"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: acme_inventory
+
+    - name: 3. Add 'localhost' to the ACME Inventory
+      ansible.controller.host:
+        name: "localhost"
+        inventory: "{{ acme_inventory.id }}"
+        variables: "ansible_connection: local"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+
+    - name: 4. Create Job Template 'WF - 1. Check System'
+      ansible.controller.job_template:
+        name: "{{ jt_name_1 }}"
+        inventory: "{{ acme_inventory.id }}"
+        project: "{{ acme_deploy_project.id }}"
+        playbook: "1_check_system.yml"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: jt_check
+
+    - name: 5. Create Job Template 'WF - 2. Deploy App'
+      ansible.controller.job_template:
+        name: "{{ jt_name_2 }}"
+        inventory: "{{ acme_inventory.id }}"
+        project: "{{ acme_deploy_project.id }}"
+        playbook: "2_deploy_app.yml"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: jt_deploy
+
+    - name: 6. Create Job Template 'WF - 3. Rollback'
+      ansible.controller.job_template:
+        name: "{{ jt_name_3 }}"
+        inventory: "{{ acme_inventory.id }}"
+        project: "{{ acme_deploy_project.id }}"
+        playbook: "3_rollback.yml"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: jt_rollback
+
+    - name: 7. Create the Workflow Template container
+      ansible.controller.workflow_job_template:
+        name: "{{ wf_name }}"
+        organization: "{{ org_name }}"
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: main_workflow
+
+    - name: 8. Link 'Check System' as the START node
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "{{ main_workflow.id }}"
+        unified_job_template: "{{ jt_check.id }}"
+        # This is the root node, so no source_nodes are needed
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+      register: node_check
+
+    - name: 9. Link 'Deploy App' on SUCCESS of the check
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "{{ main_workflow.id }}"
+        unified_job_template: "{{ jt_deploy.id }}"
+        source_nodes:
+          - id: "{{ node_check.id }}"
+            relationship: "success" # <- The success link
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+
+    - name: 10. Link 'Rollback' on FAILURE of the check
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "{{ main_workflow.id }}"
+        unified_job_template: "{{ jt_rollback.id }}"
+        source_nodes:
+          - id: "{{ node_check.id }}"
+            relationship: "failure" # <- The failure link
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
