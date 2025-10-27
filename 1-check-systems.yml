@@ -10,10 +10,10 @@
         state: directory
         mode: '0755'
 
-- name: Set a 'step 1 success' artifact
-      ansible.builtin.set_stats:
-        data:
-          step_1_status: "successful"
+    - name: Set a 'step 1 success' artifact
+          ansible.builtin.set_stats:
+            data:
+              step_1_status: "successful"
 
     # This task is used to test the failure path.
     # By default, 'force_failure' is not defined, so it will be false, and the task will be skipped.
