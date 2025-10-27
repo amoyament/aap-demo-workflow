@@ -1,0 +1,26 @@
+---
+- name: 1. Run Pre-flight Checks
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Create a demo directory
+      ansible.builtin.file:
+        path: /tmp/workflow_demo
+        state: directory
+        mode: '0755'
+
+    - name: Create a status file
+      ansible.builtin.copy:
+        content: "Step 1 (Check) was successful."
+        dest: /tmp/workflow_demo/status.txt
+
+    # This task is used to test the failure path.
+    # By default, 'force_failure' is not defined, so it will be false, and the task will be skipped.
+    - name: (TESTING) Force a failure if 'force_failure' is true
+      ansible.builtin.command: /bin/false
+      when: force_failure | default(false) | bool
+
+    - name: Print success message
+      ansible.builtin.debug:
+        msg: "Playbook 1 (Check) completed successfully."

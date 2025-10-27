@@ -1,0 +1,24 @@
+---
+- name: 2. Deploy the Application
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Check if the status file from step 1 exists
+      ansible.builtin.stat:
+        path: /tmp/workflow_demo/status.txt
+      register: status_file
+
+    - name: Fail if status file is missing
+      ansible.builtin.fail:
+        msg: "Could not find status.txt! Did step 1 run correctly?"
+      when: not status_file.stat.exists
+
+    - name: Create the 'app' file
+      ansible.builtin.copy:
+        content: "The application was 'deployed' successfully."
+        dest: /tmp/workflow_demo/app.txt
+
+    - name: Print success message
+      ansible.builtin.debug:
+        msg: "Playbook 2 (Deploy) completed successfully."
