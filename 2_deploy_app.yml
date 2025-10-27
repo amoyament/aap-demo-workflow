@@ -5,13 +5,14 @@
 
   tasks:
     - name: Fail if the step 1 artifact is missing or did not report success
-          ansible.builtin.fail:
-            msg: "Step 1 artifact was not found or did not report success!"
-          when: ansible_facts.step_1_status is not defined or ansible_facts.step_1_status != "successful"
+      ansible.builtin.fail:
+        msg: "Step 1 artifact was not found or did not report success!"
+      when: ansible_facts.step_1_status is not defined or ansible_facts.step_1_status != "successful"
 
     - name: Print artifact message
       ansible.builtin.debug:
         msg: "Successfully read artifact from Step 1: {{ ansible_facts.step_1_status }}"
+
     - name: Create the 'app' file
       ansible.builtin.copy:
         content: "The application was 'deployed' successfully."
